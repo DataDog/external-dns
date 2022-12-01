@@ -35,7 +35,10 @@ import (
 // This is a compile-time validation that glooSource is a Source.
 var _ Source = &kongTCPIngressSource{}
 
-const defaultKongNamespace = "kong"
+const (
+	defaultKongNamespace        = "kong"
+	defaultKongCacheSyncTimeout = time.Second * 60
+)
 
 func TestKongTCPIngressEndpoints(t *testing.T) {
 	t.Parallel()
@@ -242,7 +245,7 @@ func TestKongTCPIngressEndpoints(t *testing.T) {
 			_, err = fakeDynamicClient.Resource(kongGroupdVersionResource).Namespace(defaultKongNamespace).Create(context.Background(), &tcpi, metav1.CreateOptions{})
 			assert.NoError(t, err)
 
-			source, err := NewKongTCPIngressSource(context.TODO(), fakeDynamicClient, fakeKubernetesClient, defaultKongNamespace, "kubernetes.io/ingress.class=kong", 10*time.Minute)
+			source, err := NewKongTCPIngressSource(context.TODO(), fakeDynamicClient, fakeKubernetesClient, defaultKongNamespace, "kubernetes.io/ingress.class=kong", defaultKongCacheSyncTimeout)
 			assert.NoError(t, err)
 			assert.NotNil(t, source)
 

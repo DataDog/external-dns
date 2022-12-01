@@ -68,6 +68,7 @@ type Config struct {
 	SkipperRouteGroupVersion       string
 	RequestTimeout                 time.Duration
 	CacheSyncTimeout               time.Duration
+	DynamicCacheSyncTimeout        time.Duration
 	DefaultTargets                 []string
 	OCPRouterName                  string
 }
@@ -235,13 +236,13 @@ func BuildWithConfig(ctx context.Context, source string, p ClientGenerator, cfg 
 		if err != nil {
 			return nil, err
 		}
-		return NewAmbassadorHostSource(ctx, dynamicClient, kubernetesClient, cfg.Namespace, cfg.CacheSyncTimeout)
+		return NewAmbassadorHostSource(ctx, dynamicClient, kubernetesClient, cfg.Namespace, cfg.DynamicCacheSyncTimeout)
 	case "contour-httpproxy":
 		dynamicClient, err := p.DynamicKubernetesClient()
 		if err != nil {
 			return nil, err
 		}
-		return NewContourHTTPProxySource(ctx, dynamicClient, cfg.Namespace, cfg.AnnotationFilter, cfg.FQDNTemplate, cfg.CombineFQDNAndAnnotation, cfg.IgnoreHostnameAnnotation, cfg.CacheSyncTimeout)
+		return NewContourHTTPProxySource(ctx, dynamicClient, cfg.Namespace, cfg.AnnotationFilter, cfg.FQDNTemplate, cfg.CombineFQDNAndAnnotation, cfg.IgnoreHostnameAnnotation, cfg.DynamicCacheSyncTimeout)
 	case "gloo-proxy":
 		kubernetesClient, err := p.KubeClient()
 		if err != nil {
@@ -292,7 +293,7 @@ func BuildWithConfig(ctx context.Context, source string, p ClientGenerator, cfg 
 		if err != nil {
 			return nil, err
 		}
-		return NewKongTCPIngressSource(ctx, dynamicClient, kubernetesClient, cfg.Namespace, cfg.AnnotationFilter, cfg.CacheSyncTimeout)
+		return NewKongTCPIngressSource(ctx, dynamicClient, kubernetesClient, cfg.Namespace, cfg.AnnotationFilter, cfg.DynamicCacheSyncTimeout)
 	}
 	return nil, ErrSourceNotFound
 }
