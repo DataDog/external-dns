@@ -296,8 +296,8 @@ type informerFactory interface {
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 }
 
-func waitForCacheSync(ctx context.Context, factory informerFactory) error {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+func waitForCacheSync(ctx context.Context, timeout time.Duration, factory informerFactory) error {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	for typ, done := range factory.WaitForCacheSync(ctx.Done()) {
 		if !done {
@@ -316,8 +316,8 @@ type dynamicInformerFactory interface {
 	WaitForCacheSync(stopCh <-chan struct{}) map[schema.GroupVersionResource]bool
 }
 
-func waitForDynamicCacheSync(ctx context.Context, factory dynamicInformerFactory) error {
-	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+func waitForDynamicCacheSync(ctx context.Context, cacheSyncTimeout time.Duration, factory dynamicInformerFactory) error {
+	ctx, cancel := context.WithTimeout(ctx, cacheSyncTimeout)
 	defer cancel()
 	for typ, done := range factory.WaitForCacheSync(ctx.Done()) {
 		if !done {

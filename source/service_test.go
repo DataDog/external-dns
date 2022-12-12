@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -78,6 +79,7 @@ func (suite *ServiceSuite) SetupTest() {
 		[]string{},
 		false,
 		labels.Everything(),
+		10*time.Minute,
 	)
 	suite.NoError(err, "should initialize service source")
 }
@@ -158,6 +160,7 @@ func testServiceSourceNewServiceSource(t *testing.T) {
 				ti.serviceTypesFilter,
 				false,
 				labels.Everything(),
+				10*time.Minute,
 			)
 
 			if ti.expectError {
@@ -1054,6 +1057,7 @@ func testServiceSourceEndpoints(t *testing.T) {
 				tc.serviceTypesFilter,
 				tc.ignoreHostnameAnnotation,
 				sourceLabel,
+				10*time.Minute,
 			)
 
 			require.NoError(t, err)
@@ -1243,6 +1247,7 @@ func testMultipleServicesEndpoints(t *testing.T) {
 				tc.serviceTypesFilter,
 				tc.ignoreHostnameAnnotation,
 				labels.Everything(),
+				10*time.Minute,
 			)
 			require.NoError(t, err)
 
@@ -1408,6 +1413,7 @@ func TestClusterIpServices(t *testing.T) {
 				[]string{},
 				tc.ignoreHostnameAnnotation,
 				labelSelector,
+				10*time.Minute,
 			)
 			require.NoError(t, err)
 
@@ -1978,6 +1984,7 @@ func TestServiceSourceNodePortServices(t *testing.T) {
 				[]string{},
 				tc.ignoreHostnameAnnotation,
 				labels.Everything(),
+				10*time.Minute,
 			)
 			require.NoError(t, err)
 
@@ -2314,6 +2321,7 @@ func TestHeadlessServices(t *testing.T) {
 				[]string{},
 				tc.ignoreHostnameAnnotation,
 				labels.Everything(),
+				10*time.Minute,
 			)
 			require.NoError(t, err)
 
@@ -2671,6 +2679,7 @@ func TestHeadlessServicesHostIP(t *testing.T) {
 				[]string{},
 				tc.ignoreHostnameAnnotation,
 				labels.Everything(),
+				10*time.Minute,
 			)
 			require.NoError(t, err)
 
@@ -2783,6 +2792,7 @@ func TestExternalServices(t *testing.T) {
 				[]string{},
 				tc.ignoreHostnameAnnotation,
 				labels.Everything(),
+				10*time.Minute,
 			)
 			require.NoError(t, err)
 
@@ -2837,6 +2847,7 @@ func BenchmarkServiceEndpoints(b *testing.B) {
 		[]string{},
 		false,
 		labels.Everything(),
+		10*time.Minute,
 	)
 	require.NoError(b, err)
 

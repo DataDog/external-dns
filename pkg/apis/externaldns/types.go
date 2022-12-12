@@ -148,6 +148,8 @@ type Config struct {
 	LogFormat                         string
 	MetricsAddress                    string
 	LogLevel                          string
+	CacheSyncTimeout                  time.Duration
+	DynamicCacheSyncTimeout           time.Duration
 	TXTCacheInterval                  time.Duration
 	TXTWildcardReplacement            string
 	ExoscaleEndpoint                  string
@@ -272,6 +274,8 @@ var defaultConfig = &Config{
 	TXTCacheInterval:            0,
 	TXTWildcardReplacement:      "",
 	MinEventSyncInterval:        5 * time.Second,
+	CacheSyncTimeout:            time.Second * 60,
+	DynamicCacheSyncTimeout:     time.Second * 60,
 	Interval:                    time.Minute,
 	Once:                        false,
 	DryRun:                      false,
@@ -517,6 +521,8 @@ func (cfg *Config) ParseFlags(args []string) error {
 	app.Flag("txt-wildcard-replacement", "When using the TXT registry, a custom string that's used instead of an asterisk for TXT records corresponding to wildcard DNS records (optional)").Default(defaultConfig.TXTWildcardReplacement).StringVar(&cfg.TXTWildcardReplacement)
 
 	// Flags related to the main control loop
+	app.Flag("cache-sync-timeout", "The maximum time allowed for a cache synchronization to occur (default: 10m)").Default(defaultConfig.CacheSyncTimeout.String()).DurationVar(&cfg.CacheSyncTimeout)
+	app.Flag("dynamic-cache-sync-timeout", "The maximum time allowed for a dynamic cache synchronization to occur (default: 10m)").Default(defaultConfig.DynamicCacheSyncTimeout.String()).DurationVar(&cfg.DynamicCacheSyncTimeout)
 	app.Flag("txt-cache-interval", "The interval between cache synchronizations in duration format (default: disabled)").Default(defaultConfig.TXTCacheInterval.String()).DurationVar(&cfg.TXTCacheInterval)
 	app.Flag("interval", "The interval between two consecutive synchronizations in duration format (default: 1m)").Default(defaultConfig.Interval.String()).DurationVar(&cfg.Interval)
 	app.Flag("min-event-sync-interval", "The minimum interval between two consecutive synchronizations triggered from kubernetes events in duration format (default: 5s)").Default(defaultConfig.MinEventSyncInterval.String()).DurationVar(&cfg.MinEventSyncInterval)

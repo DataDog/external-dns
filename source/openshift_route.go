@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"sort"
 	"text/template"
+	"time"
 
 	routev1 "github.com/openshift/api/route/v1"
 	versioned "github.com/openshift/client-go/route/clientset/versioned"
@@ -62,6 +63,7 @@ func NewOcpRouteSource(
 	ignoreHostnameAnnotation bool,
 	labelSelector labels.Selector,
 	ocpRouterName string,
+	cacheSyncTimeout time.Duration,
 ) (Source, error) {
 	tmpl, err := parseTemplate(fqdnTemplate)
 	if err != nil {
@@ -84,7 +86,7 @@ func NewOcpRouteSource(
 	informerFactory.Start(ctx.Done())
 
 	// wait for the local cache to be populated.
-	if err := waitForCacheSync(context.Background(), informerFactory); err != nil {
+	if err := waitForCacheSync(context.Background(), cacheSyncTimeout, informerFactory); err != nil {
 		return nil, err
 	}
 

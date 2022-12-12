@@ -19,6 +19,7 @@ package source
 import (
 	"context"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -97,6 +98,7 @@ func (suite *VirtualServiceSuite) SetupTest() {
 		"{{.Name}}",
 		false,
 		false,
+		10*time.Minute,
 	)
 	suite.NoError(err, "should initialize virtualservice source")
 }
@@ -174,6 +176,7 @@ func TestNewIstioVirtualServiceSource(t *testing.T) {
 				ti.fqdnTemplate,
 				ti.combineFQDNAndAnnotation,
 				false,
+				10*time.Minute,
 			)
 			if ti.expectError {
 				assert.Error(t, err)
@@ -1492,6 +1495,7 @@ func testVirtualServiceEndpoints(t *testing.T) {
 				ti.fqdnTemplate,
 				ti.combineFQDNAndAnnotation,
 				ti.ignoreHostnameAnnotation,
+				10*time.Minute,
 			)
 			require.NoError(t, err)
 
@@ -1568,6 +1572,7 @@ func newTestVirtualServiceSource(loadBalancerList []fakeIngressGatewayService, g
 		"{{.Name}}",
 		false,
 		false,
+		10*time.Minute,
 	)
 	if err != nil {
 		return nil, err
