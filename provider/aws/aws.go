@@ -33,6 +33,7 @@ import (
 	"github.com/linki/instrumented_http"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/plan"
@@ -131,13 +132,14 @@ var (
 		"cloudfront.net": "Z2FDTNDATAQYW2",
 	}
 
-	recordSetWithTooManyResourceRecords = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "record_set_with_too_many_resource_records",
+	resourceRecordsOverLimitForRecordSet = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "resource_records_over_limit_for_record_set",
 	}, []string{"dns_name"})
+	gaugeSetPerResourceRecordLabel = map[string]struct{}{}
 )
 
 func init() {
-	prometheus.MustRegister(recordSetWithTooManyResourceRecords)
+	prometheus.MustRegister(resourceRecordsOverLimitForRecordSet)
 }
 
 // Route53API is the subset of the AWS Route53 API that we actually use.  Add methods as required. Signatures must match exactly.
@@ -699,8 +701,15 @@ func (p *AWSProvider) newChange(action string, ep *endpoint.Endpoint) (*route53.
 	return change, dualstack
 }
 
+// For the resourceRecordsOverLimitForRecordSet we only set it initially if it ever hits the
+// limit. Once it hits the limit we will keep track of the gauge, and if it ever falls below the
+// limit we set it to 0.
 func truncateEndpointTargetSubset(ep *endpoint.Endpoint) []string {
 	if len(ep.Targets) < maxResourceRecordsPerResourceRecordSet {
+		if _, ok := gaugeSetPerResourceRecordLabel[ep.DNSName]; ok {
+			resourceRecordsOverLimitForRecordSet.WithLabelValues(ep.DNSName).Set(0)
+		}
+
 		// no mutating needed - just return a list (unsorted) of all endpoint.Targets
 		targets := make([]string, len(ep.Targets))
 		for idx, val := range ep.Targets {
@@ -709,7 +718,8 @@ func truncateEndpointTargetSubset(ep *endpoint.Endpoint) []string {
 		return targets
 	}
 
-	recordSetWithTooManyResourceRecords.WithLabelValues(ep.DNSName).Set(1)
+	resourceRecordsOverLimitForRecordSet.WithLabelValues(ep.DNSName).Set(1)
+	gaugeSetPerResourceRecordLabel[ep.DNSName] = struct{}{}
 
 	log.Errorf(
 		"Truncating and sorting %d (of %d) endpoint targets for endpoint %s, which is in excess of Route53 limits of ResourceRecord per ResourceRecordSet",
