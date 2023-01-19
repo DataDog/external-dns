@@ -130,7 +130,15 @@ var (
 		// Cloudfront
 		"cloudfront.net": "Z2FDTNDATAQYW2",
 	}
+
+	recordSetWithTooManyResourceRecords = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "record_set_with_too_many_resource_records",
+	}, []string{"dns_name"})
 )
+
+func init() {
+	prometheus.MustRegister(recordSetWithTooManyResourceRecords)
+}
 
 // Route53API is the subset of the AWS Route53 API that we actually use.  Add methods as required. Signatures must match exactly.
 // mostly taken from: https://github.com/kubernetes/kubernetes/blob/853167624edb6bc0cfdcdfb88e746e178f5db36c/federation/pkg/dnsprovider/providers/aws/route53/stubs/route53api.go
@@ -701,7 +709,13 @@ func truncateEndpointTargetSubset(ep *endpoint.Endpoint) []string {
 		return targets
 	}
 
-	log.Warnf("Truncating and sorting %d (of %d) endpoint targets for endpoint %s, which is in excess of Route53 limits of ResourceRecord per ResourceRecordSet", maxResourceRecordsPerResourceRecordSet, len(ep.Targets), ep.DNSName)
+	recordSetWithTooManyResourceRecords.WithLabelValues(ep.DNSName).Set(1)
+
+	log.Errorf(
+		"Truncating and sorting %d (of %d) endpoint targets for endpoint %s, which is in excess of Route53 limits of ResourceRecord per ResourceRecordSet",
+		maxResourceRecordsPerResourceRecordSet,
+		len(ep.Targets),
+		ep.DNSName)
 	hashedTargets := map[string]string{}
 	var hashedTargetKeys []string
 	// hash, then sort targets, so we have a stable yet random subset of IPs
