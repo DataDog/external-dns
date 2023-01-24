@@ -715,9 +715,9 @@ func truncateEndpointTargetSubset(
 	maxResourceRecordsPerResourceRecordSet int,
 ) []string {
 	if len(ep.Targets) < maxResourceRecordsPerResourceRecordSet {
-		if _, ok := gaugeSetPerResourceRecordLabel[ep.DNSName]; ok {
-			resourceRecordsOverLimitForRecordSet.WithLabelValues(ep.DNSName).Set(0)
-		}
+		// if _, ok := gaugeSetPerResourceRecordLabel[ep.DNSName]; ok {
+		// 	resourceRecordsOverLimitForRecordSet.WithLabelValues(ep.DNSName).Set(0)
+		// }
 
 		// no mutating needed - just return a list (unsorted) of all endpoint.Targets
 		targets := make([]string, len(ep.Targets))
@@ -728,7 +728,7 @@ func truncateEndpointTargetSubset(
 	}
 
 	resourceRecordsOverLimitForRecordSet.WithLabelValues(ep.DNSName).Set(1)
-	gaugeSetPerResourceRecordLabel[ep.DNSName] = struct{}{}
+	// gaugeSetPerResourceRecordLabel[ep.DNSName] = struct{}{}
 
 	log.Errorf(
 		"Truncating and sorting %d (of %d) endpoint targets for endpoint %s, which is in excess of Route53 limits of ResourceRecord per ResourceRecordSet",
