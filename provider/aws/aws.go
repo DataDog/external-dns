@@ -40,6 +40,12 @@ import (
 	"sigs.k8s.io/external-dns/provider"
 )
 
+type recordSetIdentifier struct {
+	name string
+	recordType string
+	setIdentifier string
+}
+
 const (
 	recordTTL = 300
 	// From the experiments, it seems that the default MaxItems applied is 100,
@@ -134,8 +140,8 @@ var (
 
 	resourceRecordsOverLimitForRecordSet = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "resource_records_over_limit_for_record_set",
-	}, []string{"dns_name"})
-	gaugeSetPerResourceRecordLabel = map[string]struct{}{}
+	}, []string{"dns_name", "record_type", "set_identifier"})
+	gaugeSetPerResourceRecordLabel = map[recordSetIdentifier]struct{}{}
 )
 
 func init() {
@@ -650,7 +656,6 @@ func (p *AWSProvider) newChange(action string, ep *endpoint.Endpoint) (*route53.
 		mungedEndpointTargets := truncateEndpointTargetSubset(
 			ep,
 			p.maxResourceRecordsPerResourceRecordSet,
-			aws.StringValue(change.ResourceRecordSet.Type),
 		)
 		change.ResourceRecordSet.ResourceRecords = make([]*route53.ResourceRecord, len(mungedEndpointTargets))
 		for idx, val := range mungedEndpointTargets {
@@ -714,12 +719,17 @@ func (p *AWSProvider) newChange(action string, ep *endpoint.Endpoint) (*route53.
 func truncateEndpointTargetSubset(
 	ep *endpoint.Endpoint,
 	maxResourceRecordsPerResourceRecordSet int,
-	resourceType string,
 ) []string {
+	identifier := recordSetIdentifier {
+		name: ep.DNSName,
+		recordType: ep.RecordType,
+		setIdentifier: ep.SetIdentifier,
+	}
+
 	if len(ep.Targets) < maxResourceRecordsPerResourceRecordSet {
-		if _, ok := gaugeSetPerResourceRecordLabel[ep.DNSName]; ok {
-			log.Infof("setting %q to 0. it has %d targets and is type %q", ep.DNSName, len(ep.Targets), resourceType)
-			resourceRecordsOverLimitForRecordSet.WithLabelValues(ep.DNSName).Set(0)
+		if _, ok := gaugeSetPerResourceRecordLabel[identifier]; ok {
+			log.Infof("setting %q to 0. it has %d targets, type %q and setIdentifier %q", ep.DNSName, len(ep.Targets), ep.RecordType, ep.SetIdentifier)
+			resourceRecordsOverLimitForRecordSet.WithLabelValues(identifier.name, identifier.recordType, identifier.setIdentifier).Set(0)
 		}
 
 		// no mutating needed - just return a list (unsorted) of all endpoint.Targets
@@ -730,15 +740,16 @@ func truncateEndpointTargetSubset(
 		return targets
 	}
 
-	resourceRecordsOverLimitForRecordSet.WithLabelValues(ep.DNSName).Set(1)
-	gaugeSetPerResourceRecordLabel[ep.DNSName] = struct{}{}
+	resourceRecordsOverLimitForRecordSet.WithLabelValues(identifier.name, identifier.recordType, identifier.setIdentifier).Set(1)
+	gaugeSetPerResourceRecordLabel[identifier] = struct{}{}
 
 	log.Errorf(
-		"Truncating and sorting %d (of %d) endpoint targets for endpoint %q. Resource is of type %q",
+		"Truncating and sorting %d (of %d) endpoint targets for endpoint %q. Resource is of type %q with setIdentifier %q",
 		maxResourceRecordsPerResourceRecordSet,
 		len(ep.Targets),
 		ep.DNSName,
-		resourceType,
+		ep.RecordType,
+		ep.SetIdentifier,
 	)
 	hashedTargets := map[string]string{}
 	var hashedTargetKeys []string
