@@ -650,6 +650,7 @@ func (p *AWSProvider) newChange(action string, ep *endpoint.Endpoint) (*route53.
 		mungedEndpointTargets := truncateEndpointTargetSubset(
 			ep,
 			p.maxResourceRecordsPerResourceRecordSet,
+			aws.StringValue(change.ResourceRecordSet.Type),
 		)
 		change.ResourceRecordSet.ResourceRecords = make([]*route53.ResourceRecord, len(mungedEndpointTargets))
 		for idx, val := range mungedEndpointTargets {
@@ -713,10 +714,11 @@ func (p *AWSProvider) newChange(action string, ep *endpoint.Endpoint) (*route53.
 func truncateEndpointTargetSubset(
 	ep *endpoint.Endpoint,
 	maxResourceRecordsPerResourceRecordSet int,
+	resourceType string,
 ) []string {
 	if len(ep.Targets) < maxResourceRecordsPerResourceRecordSet {
 		if _, ok := gaugeSetPerResourceRecordLabel[ep.DNSName]; ok {
-			log.Infof("setting %q to 0. it has %d targets", ep.DNSName, len(ep.Targets))
+			log.Infof("setting %q to 0. it has %d targets and is type %q", ep.DNSName, len(ep.Targets), resourceType)
 			resourceRecordsOverLimitForRecordSet.WithLabelValues(ep.DNSName).Set(0)
 		}
 
@@ -732,10 +734,12 @@ func truncateEndpointTargetSubset(
 	gaugeSetPerResourceRecordLabel[ep.DNSName] = struct{}{}
 
 	log.Errorf(
-		"Truncating and sorting %d (of %d) endpoint targets for endpoint %s, which is in excess of Route53 limits of ResourceRecord per ResourceRecordSet",
+		"Truncating and sorting %d (of %d) endpoint targets for endpoint %q. Resource is of type %q",
 		maxResourceRecordsPerResourceRecordSet,
 		len(ep.Targets),
-		ep.DNSName)
+		ep.DNSName,
+		resourceType,
+	)
 	hashedTargets := map[string]string{}
 	var hashedTargetKeys []string
 	// hash, then sort targets, so we have a stable yet random subset of IPs
