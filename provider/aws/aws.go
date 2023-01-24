@@ -728,9 +728,8 @@ func truncateEndpointTargetSubset(
 
 	if len(ep.Targets) < maxResourceRecordsPerResourceRecordSet {
 		if _, ok := gaugeSetPerResourceRecordLabel[identifier]; ok {
-			log.Infof("setting %q to 0. it has %d targets, type %q and setIdentifier %q", ep.DNSName, len(ep.Targets), ep.RecordType, ep.SetIdentifier)
-			resourceRecordsOverLimitForRecordSet.WithLabelValues(identifier.name, identifier.recordType, identifier.setIdentifier).Set(0)
-		}
+			log.Debugf("setting %q to 0. it has %d targets, type %q and setIdentifier %q", ep.DNSName, len(ep.Targets), ep.RecordType, ep.SetIdentifier)
+			resourceRecordsOverLimitForRecordSet.WithLabelValues(identifier.name, identifier.recordType, identifier.setIdentifier).Set(0) }
 
 		// no mutating needed - just return a list (unsorted) of all endpoint.Targets
 		targets := make([]string, len(ep.Targets))
