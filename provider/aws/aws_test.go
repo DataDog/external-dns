@@ -969,7 +969,7 @@ func TestAWSBatchChangeSetExceedingRRElementCount(t *testing.T) {
 	require.Equal(t, 2, len(batchCs))
 }
 
-func TestGetResourceRecordElementCount(t *testing.T) {
+func TestGetResourceRecordCountPerChangeSet(t *testing.T) {
 	var cs []*route53.Change
 
 	for i := 1; i <= 10; i += 1 {
@@ -987,12 +987,12 @@ func TestGetResourceRecordElementCount(t *testing.T) {
 		})
 	}
 
-	ResourceRecordCount := _getResourceRecordElementCount(cs)
+	ResourceRecordCount := getResourceRecordCountPerChangeSet(cs)
 
 	require.Equal(t, 30, ResourceRecordCount)
 }
 
-func TestGetResourceRecordElementCountEmptyList(t *testing.T) {
+func TestGetResourceRecordCountPerChangeSetEmptyList(t *testing.T) {
 	var cs []*route53.Change
 
 	for i := 1; i <= 10; i += 1 {
@@ -1005,12 +1005,12 @@ func TestGetResourceRecordElementCountEmptyList(t *testing.T) {
 		})
 	}
 
-	ResourceRecordCount := _getResourceRecordElementCount(cs)
+	ResourceRecordCount := getResourceRecordCountPerChangeSet(cs)
 
 	require.Equal(t, 0, ResourceRecordCount)
 }
 
-func TestGetResourceRecordElementBool(t *testing.T) {
+func TestDoesResourceRecordCountExceedsLimitPerChangeSet(t *testing.T) {
 	var cs []*route53.Change
 
 	for i := 1; i <= 10; i += 1 {
@@ -1028,13 +1028,13 @@ func TestGetResourceRecordElementBool(t *testing.T) {
 		})
 	}
 
-	ResourceRecordBool := getResourceRecordElementBool(cs, 40)
+	ResourceRecordBool := doesResourceRecordCountExceedsLimitPerChangeSet(cs, 40)
 	require.Equal(t, true, ResourceRecordBool)
 
-	ResourceRecordBool = getResourceRecordElementBool(cs, 30)
+	ResourceRecordBool = doesResourceRecordCountExceedsLimitPerChangeSet(cs, 30)
 	require.Equal(t, true, ResourceRecordBool)
 
-	ResourceRecordBool = getResourceRecordElementBool(cs, 20)
+	ResourceRecordBool = doesResourceRecordCountExceedsLimitPerChangeSet(cs, 20)
 	require.Equal(t, false, ResourceRecordBool)
 }
 

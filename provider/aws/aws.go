@@ -49,10 +49,12 @@ const (
 	// Hence, ifever AWS decides to raise this limit, we will automatically reduce the pressure on rate limits
 	route53PageSize = "300"
 
+	// Reference for AWS Route53 Quotas: https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/DNSLimitations.html
 	// Route53 does not tolerate more than 400 resource records per RRSet
 	maxResourceRecordsPerResourceRecordSet = 400
 	// Route53 does not tolerate more than 500 resource records per ChangeBatch
 	maxResourceRecordsPerChangeBatch = 500
+
 	// provider specific key that designates whether an AWS ALIAS record has the EvaluateTargetHealth
 	// field set to true.
 	providerSpecificAlias                      = "alias"
@@ -732,7 +734,7 @@ func (p *AWSProvider) tagsForZone(ctx context.Context, zoneID string) (map[strin
 	return tagMap, nil
 }
 
-func _getResourceRecordElementCount(cs []*route53.Change) int {
+func getResourceRecordCountPerChangeSet(cs []*route53.Change) int {
 	rrsetCount := 0
 	for _, c := range cs {
 		rrsetCount = rrsetCount + len(c.ResourceRecordSet.ResourceRecords)
@@ -740,12 +742,12 @@ func _getResourceRecordElementCount(cs []*route53.Change) int {
 	return rrsetCount
 }
 
-func getResourceRecordElementBool(cs []*route53.Change, maxLimit int) bool {
-	return _getResourceRecordElementCount(cs) <= maxLimit
+func doesResourceRecordCountExceedsLimitPerChangeSet(cs []*route53.Change, maxLimit int) bool {
+	return getResourceRecordCountPerChangeSet(cs) <= maxLimit
 }
 
 func batchChangeSet(cs []*route53.Change, batchSize int) [][]*route53.Change {
-	if len(cs) <= batchSize && getResourceRecordElementBool(cs, maxResourceRecordsPerChangeBatch) {
+	if len(cs) <= batchSize && doesResourceRecordCountExceedsLimitPerChangeSet(cs, maxResourceRecordsPerChangeBatch) {
 		res := sortChangesByActionNameType(cs)
 		return [][]*route53.Change{res}
 	}
@@ -774,9 +776,9 @@ func batchChangeSet(cs []*route53.Change, batchSize int) [][]*route53.Change {
 
 		var existingBatch bool
 		for i, b := range batchChanges {
-			potential_batch := append(batchChanges[i], changesByName[name]...)
-			if len(b)+totalChangesByName <= batchSize && getResourceRecordElementBool(potential_batch, maxResourceRecordsPerChangeBatch) {
-				batchChanges[i] = potential_batch
+			potentialBatch := append(batchChanges[i], changesByName[name]...)
+			if len(b)+totalChangesByName <= batchSize && doesResourceRecordCountExceedsLimitPerChangeSet(potentialBatch, maxResourceRecordsPerChangeBatch) {
+				batchChanges[i] = potentialBatch
 				existingBatch = true
 				break
 			}
