@@ -742,12 +742,12 @@ func getResourceRecordCountPerChangeSet(cs []*route53.Change) int {
 	return rrsetCount
 }
 
-func doesResourceRecordCountExceedsLimitPerChangeSet(cs []*route53.Change, maxLimit int) bool {
+func doesResourceRecordCountExceedLimitPerChangeSet(cs []*route53.Change, maxLimit int) bool {
 	return getResourceRecordCountPerChangeSet(cs) <= maxLimit
 }
 
 func batchChangeSet(cs []*route53.Change, batchSize int) [][]*route53.Change {
-	if len(cs) <= batchSize && doesResourceRecordCountExceedsLimitPerChangeSet(cs, maxResourceRecordsPerChangeBatch) {
+	if len(cs) <= batchSize && doesResourceRecordCountExceedLimitPerChangeSet(cs, maxResourceRecordsPerChangeBatch) {
 		res := sortChangesByActionNameType(cs)
 		return [][]*route53.Change{res}
 	}
@@ -777,7 +777,7 @@ func batchChangeSet(cs []*route53.Change, batchSize int) [][]*route53.Change {
 		var existingBatch bool
 		for i, b := range batchChanges {
 			potentialBatch := append(batchChanges[i], changesByName[name]...)
-			if len(b)+totalChangesByName <= batchSize && doesResourceRecordCountExceedsLimitPerChangeSet(potentialBatch, maxResourceRecordsPerChangeBatch) {
+			if len(b)+totalChangesByName <= batchSize && doesResourceRecordCountExceedLimitPerChangeSet(potentialBatch, maxResourceRecordsPerChangeBatch) {
 				batchChanges[i] = potentialBatch
 				existingBatch = true
 				break
