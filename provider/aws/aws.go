@@ -165,6 +165,7 @@ type AWSProvider struct {
 	dryRun               bool
 	batchChangeSize      int
 	batchChangeInterval  time.Duration
+	maxResourceRecordsPerResourceRecordSet int
 	evaluateTargetHealth bool
 	// only consider hosted zones managing domains ending in this suffix
 	domainFilter endpoint.DomainFilter
@@ -186,6 +187,7 @@ type AWSConfig struct {
 	ZoneTagFilter        provider.ZoneTagFilter
 	BatchChangeSize      int
 	BatchChangeInterval  time.Duration
+	MaxResourceRecordsPerResourceRecordSet int
 	EvaluateTargetHealth bool
 	AssumeRole           string
 	APIRetries           int
@@ -228,6 +230,7 @@ func NewAWSProvider(awsConfig AWSConfig) (*AWSProvider, error) {
 		zoneTagFilter:        awsConfig.ZoneTagFilter,
 		batchChangeSize:      awsConfig.BatchChangeSize,
 		batchChangeInterval:  awsConfig.BatchChangeInterval,
+		maxResourceRecordsPerResourceRecordSet: awsConfig.MaxResourceRecordsPerResourceRecordSet,
 		evaluateTargetHealth: awsConfig.EvaluateTargetHealth,
 		preferCNAME:          awsConfig.PreferCNAME,
 		dryRun:               awsConfig.DryRun,
@@ -644,7 +647,10 @@ func (p *AWSProvider) newChange(action string, ep *endpoint.Endpoint) (*route53.
 		} else {
 			change.ResourceRecordSet.TTL = aws.Int64(int64(ep.RecordTTL))
 		}
-		mungedEndpointTargets := truncateEndpointTargetSubset(ep)
+		mungedEndpointTargets := truncateEndpointTargetSubset(
+			ep,
+			p.maxResourceRecordsPerResourceRecordSet,
+		)
 		change.ResourceRecordSet.ResourceRecords = make([]*route53.ResourceRecord, len(mungedEndpointTargets))
 		for idx, val := range mungedEndpointTargets {
 			change.ResourceRecordSet.ResourceRecords[idx] = &route53.ResourceRecord{
@@ -704,7 +710,10 @@ func (p *AWSProvider) newChange(action string, ep *endpoint.Endpoint) (*route53.
 // For the resourceRecordsOverLimitForRecordSet we only set it initially if it ever hits the
 // limit. Once it hits the limit we will keep track of the gauge, and if it ever falls below the
 // limit we set it to 0.
-func truncateEndpointTargetSubset(ep *endpoint.Endpoint) []string {
+func truncateEndpointTargetSubset(
+	ep *endpoint.Endpoint,
+	maxResourceRecordsPerResourceRecordSet int,
+) []string {
 	if len(ep.Targets) < maxResourceRecordsPerResourceRecordSet {
 		if _, ok := gaugeSetPerResourceRecordLabel[ep.DNSName]; ok {
 			resourceRecordsOverLimitForRecordSet.WithLabelValues(ep.DNSName).Set(0)
