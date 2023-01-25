@@ -40,6 +40,9 @@ import (
 	"sigs.k8s.io/external-dns/provider"
 )
 
+// in order to uniquely identify a record set, name and record are sufficent for simple routing
+// but setIdentifier is needed for record sets belonging to more complex policies
+// https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html
 type recordSetIdentifier struct {
 	name string
 	recordType string
