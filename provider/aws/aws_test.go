@@ -942,6 +942,102 @@ func TestAWSBatchChangeSetExceedingNameChange(t *testing.T) {
 	require.Equal(t, 0, len(batchCs))
 }
 
+func TestAWSBatchChangeSetExceedingRRElementCount(t *testing.T) {
+	var cs []*route53.Change
+
+	// Creates a cs with 505 resource record elements
+	for i := 1; i <= 101; i += 1 {
+		cs = append(cs, &route53.Change{
+			Action: aws.String(route53.ChangeActionCreate),
+			ResourceRecordSet: &route53.ResourceRecordSet{
+				Name: aws.String(fmt.Sprintf("host-%d", i)),
+				Type: aws.String("A"),
+				ResourceRecords: []*route53.ResourceRecord{
+					{Value: aws.String("foo1.example.org")},
+					{Value: aws.String("foo2.example.org")},
+					{Value: aws.String("foo3.example.org")},
+					{Value: aws.String("foo4.example.org")},
+					{Value: aws.String("foo5.example.org")},
+				},
+			},
+		})
+	}
+
+	batchCs := batchChangeSet(cs, defaultBatchChangeSize)
+
+	// Check that the cs was split up into 2 batches
+	require.Equal(t, 2, len(batchCs))
+}
+
+func TestGetResourceRecordCountPerChangeSet(t *testing.T) {
+	var cs []*route53.Change
+
+	for i := 1; i <= 10; i += 1 {
+		cs = append(cs, &route53.Change{
+			Action: aws.String(route53.ChangeActionCreate),
+			ResourceRecordSet: &route53.ResourceRecordSet{
+				Name: aws.String(fmt.Sprintf("host-%d", i)),
+				Type: aws.String("A"),
+				ResourceRecords: []*route53.ResourceRecord{
+					{Value: aws.String("foo1.example.org")},
+					{Value: aws.String("foo2.example.org")},
+					{Value: aws.String("foo3.example.org")},
+				},
+			},
+		})
+	}
+
+	ResourceRecordCount := getResourceRecordCountPerChangeSet(cs)
+
+	require.Equal(t, 30, ResourceRecordCount)
+}
+
+func TestGetResourceRecordCountPerChangeSetEmptyList(t *testing.T) {
+	var cs []*route53.Change
+
+	for i := 1; i <= 10; i += 1 {
+		cs = append(cs, &route53.Change{
+			Action: aws.String(route53.ChangeActionCreate),
+			ResourceRecordSet: &route53.ResourceRecordSet{
+				Name: aws.String(fmt.Sprintf("host-%d", i)),
+				Type: aws.String("A"),
+			},
+		})
+	}
+
+	ResourceRecordCount := getResourceRecordCountPerChangeSet(cs)
+
+	require.Equal(t, 0, ResourceRecordCount)
+}
+
+func TestIsResourceRecordCountBelowLimitPerChangeSet(t *testing.T) {
+	var cs []*route53.Change
+
+	for i := 1; i <= 10; i += 1 {
+		cs = append(cs, &route53.Change{
+			Action: aws.String(route53.ChangeActionCreate),
+			ResourceRecordSet: &route53.ResourceRecordSet{
+				Name: aws.String(fmt.Sprintf("host-%d", i)),
+				Type: aws.String("A"),
+				ResourceRecords: []*route53.ResourceRecord{
+					{Value: aws.String("foo1.example.org")},
+					{Value: aws.String("foo2.example.org")},
+					{Value: aws.String("foo3.example.org")},
+				},
+			},
+		})
+	}
+
+	ResourceRecordBool := isResourceRecordCountBelowLimitPerChangeSet(cs, 40)
+	require.Equal(t, true, ResourceRecordBool)
+
+	ResourceRecordBool = isResourceRecordCountBelowLimitPerChangeSet(cs, 30)
+	require.Equal(t, true, ResourceRecordBool)
+
+	ResourceRecordBool = isResourceRecordCountBelowLimitPerChangeSet(cs, 20)
+	require.Equal(t, false, ResourceRecordBool)
+}
+
 func validateEndpoints(t *testing.T, endpoints []*endpoint.Endpoint, expected []*endpoint.Endpoint) {
 	assert.True(t, testutils.SameEndpoints(endpoints, expected), "actual and expected endpoints don't match. %+v:%+v", endpoints, expected)
 }
