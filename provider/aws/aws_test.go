@@ -1010,7 +1010,7 @@ func TestGetResourceRecordCountPerChangeSetEmptyList(t *testing.T) {
 	require.Equal(t, 0, ResourceRecordCount)
 }
 
-func TestDoesResourceRecordCountExceedLimitPerChangeSet(t *testing.T) {
+func TestIsResourceRecordCountBelowLimitPerChangeSet(t *testing.T) {
 	var cs []*route53.Change
 
 	for i := 1; i <= 10; i += 1 {
@@ -1028,13 +1028,13 @@ func TestDoesResourceRecordCountExceedLimitPerChangeSet(t *testing.T) {
 		})
 	}
 
-	ResourceRecordBool := doesResourceRecordCountExceedLimitPerChangeSet(cs, 40)
+	ResourceRecordBool := isResourceRecordCountBelowLimitPerChangeSet(cs, 40)
 	require.Equal(t, true, ResourceRecordBool)
 
-	ResourceRecordBool = doesResourceRecordCountExceedLimitPerChangeSet(cs, 30)
+	ResourceRecordBool = isResourceRecordCountBelowLimitPerChangeSet(cs, 30)
 	require.Equal(t, true, ResourceRecordBool)
 
-	ResourceRecordBool = doesResourceRecordCountExceedLimitPerChangeSet(cs, 20)
+	ResourceRecordBool = isResourceRecordCountBelowLimitPerChangeSet(cs, 20)
 	require.Equal(t, false, ResourceRecordBool)
 }
 
