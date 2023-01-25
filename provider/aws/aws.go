@@ -716,10 +716,7 @@ func (p *AWSProvider) newChange(action string, ep *endpoint.Endpoint) (*route53.
 // For the resourceRecordsOverLimitForRecordSet we only set it initially if it ever hits the
 // limit. Once it hits the limit we will keep track of the gauge, and if it ever falls below the
 // limit we set it to 0.
-func truncateEndpointTargetSubset(
-	ep *endpoint.Endpoint,
-	maxResourceRecordsPerResourceRecordSet int,
-) []string {
+func truncateEndpointTargetSubset(ep *endpoint.Endpoint, maxResourceRecordsPerResourceRecordSet int) []string {
 	identifier := recordSetIdentifier {
 		name: ep.DNSName,
 		recordType: ep.RecordType,
