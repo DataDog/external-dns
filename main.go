@@ -187,18 +187,19 @@ func main() {
 	case "aws":
 		p, err = aws.NewAWSProvider(
 			aws.AWSConfig{
-				DomainFilter:         domainFilter,
-				ZoneIDFilter:         zoneIDFilter,
-				ZoneTypeFilter:       zoneTypeFilter,
-				ZoneTagFilter:        zoneTagFilter,
-				BatchChangeSize:      cfg.AWSBatchChangeSize,
-				BatchChangeInterval:  cfg.AWSBatchChangeInterval,
-				EvaluateTargetHealth: cfg.AWSEvaluateTargetHealth,
-				AssumeRole:           cfg.AWSAssumeRole,
-				APIRetries:           cfg.AWSAPIRetries,
-				PreferCNAME:          cfg.AWSPreferCNAME,
-				DryRun:               cfg.DryRun,
-				ZoneCacheDuration:    cfg.AWSZoneCacheDuration,
+				DomainFilter:                           domainFilter,
+				ZoneIDFilter:                           zoneIDFilter,
+				ZoneTypeFilter:                         zoneTypeFilter,
+				ZoneTagFilter:                          zoneTagFilter,
+				BatchChangeSize:                        cfg.AWSBatchChangeSize,
+				BatchChangeInterval:                    cfg.AWSBatchChangeInterval,
+				MaxResourceRecordsPerResourceRecordSet: cfg.AWSMaxResourceRecordsPerResourceRecordSet,
+				EvaluateTargetHealth:                   cfg.AWSEvaluateTargetHealth,
+				AssumeRole:                             cfg.AWSAssumeRole,
+				APIRetries:                             cfg.AWSAPIRetries,
+				PreferCNAME:                            cfg.AWSPreferCNAME,
+				DryRun:                                 cfg.DryRun,
+				ZoneCacheDuration:                      cfg.AWSZoneCacheDuration,
 			},
 		)
 	case "aws-sd":

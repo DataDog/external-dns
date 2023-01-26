@@ -33,11 +33,21 @@ import (
 	"github.com/linki/instrumented_http"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/plan"
 	"sigs.k8s.io/external-dns/provider"
 )
+
+// in order to uniquely identify a record set, name and record are sufficent for simple routing
+// but setIdentifier is needed for record sets belonging to more complex policies
+// https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html
+type recordSetIdentifier struct {
+	name string
+	recordType string
+	setIdentifier string
+}
 
 const (
 	recordTTL = 300
@@ -130,7 +140,16 @@ var (
 		// Cloudfront
 		"cloudfront.net": "Z2FDTNDATAQYW2",
 	}
+
+	resourceRecordsOverLimitForRecordSet = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "resource_records_over_limit_for_record_set",
+	}, []string{"dns_name", "record_type", "set_identifier"})
+	gaugeSetPerResourceRecordLabel = map[recordSetIdentifier]struct{}{}
 )
+
+func init() {
+	prometheus.MustRegister(resourceRecordsOverLimitForRecordSet)
+}
 
 // Route53API is the subset of the AWS Route53 API that we actually use.  Add methods as required. Signatures must match exactly.
 // mostly taken from: https://github.com/kubernetes/kubernetes/blob/853167624edb6bc0cfdcdfb88e746e178f5db36c/federation/pkg/dnsprovider/providers/aws/route53/stubs/route53api.go
@@ -155,6 +174,7 @@ type AWSProvider struct {
 	dryRun               bool
 	batchChangeSize      int
 	batchChangeInterval  time.Duration
+	maxResourceRecordsPerResourceRecordSet int
 	evaluateTargetHealth bool
 	// only consider hosted zones managing domains ending in this suffix
 	domainFilter endpoint.DomainFilter
@@ -176,6 +196,7 @@ type AWSConfig struct {
 	ZoneTagFilter        provider.ZoneTagFilter
 	BatchChangeSize      int
 	BatchChangeInterval  time.Duration
+	MaxResourceRecordsPerResourceRecordSet int
 	EvaluateTargetHealth bool
 	AssumeRole           string
 	APIRetries           int
@@ -218,6 +239,7 @@ func NewAWSProvider(awsConfig AWSConfig) (*AWSProvider, error) {
 		zoneTagFilter:        awsConfig.ZoneTagFilter,
 		batchChangeSize:      awsConfig.BatchChangeSize,
 		batchChangeInterval:  awsConfig.BatchChangeInterval,
+		maxResourceRecordsPerResourceRecordSet: awsConfig.MaxResourceRecordsPerResourceRecordSet,
 		evaluateTargetHealth: awsConfig.EvaluateTargetHealth,
 		preferCNAME:          awsConfig.PreferCNAME,
 		dryRun:               awsConfig.DryRun,
@@ -634,7 +656,10 @@ func (p *AWSProvider) newChange(action string, ep *endpoint.Endpoint) (*route53.
 		} else {
 			change.ResourceRecordSet.TTL = aws.Int64(int64(ep.RecordTTL))
 		}
-		mungedEndpointTargets := truncateEndpointTargetSubset(ep)
+		mungedEndpointTargets := truncateEndpointTargetSubset(
+			ep,
+			p.maxResourceRecordsPerResourceRecordSet,
+		)
 		change.ResourceRecordSet.ResourceRecords = make([]*route53.ResourceRecord, len(mungedEndpointTargets))
 		for idx, val := range mungedEndpointTargets {
 			change.ResourceRecordSet.ResourceRecords[idx] = &route53.ResourceRecord{
@@ -691,8 +716,21 @@ func (p *AWSProvider) newChange(action string, ep *endpoint.Endpoint) (*route53.
 	return change, dualstack
 }
 
-func truncateEndpointTargetSubset(ep *endpoint.Endpoint) []string {
+// For the resourceRecordsOverLimitForRecordSet we only set it initially if it ever hits the
+// limit. Once it hits the limit we will keep track of the gauge, and if it ever falls below the
+// limit we set it to 0.
+func truncateEndpointTargetSubset(ep *endpoint.Endpoint, maxResourceRecordsPerResourceRecordSet int) []string {
+	identifier := recordSetIdentifier {
+		name: ep.DNSName,
+		recordType: ep.RecordType,
+		setIdentifier: ep.SetIdentifier,
+	}
+
 	if len(ep.Targets) < maxResourceRecordsPerResourceRecordSet {
+		if _, ok := gaugeSetPerResourceRecordLabel[identifier]; ok {
+			log.Debugf("setting %q to 0. it has %d targets, type %q and setIdentifier %q", ep.DNSName, len(ep.Targets), ep.RecordType, ep.SetIdentifier)
+			resourceRecordsOverLimitForRecordSet.WithLabelValues(identifier.name, identifier.recordType, identifier.setIdentifier).Set(0) }
+
 		// no mutating needed - just return a list (unsorted) of all endpoint.Targets
 		targets := make([]string, len(ep.Targets))
 		for idx, val := range ep.Targets {
@@ -701,7 +739,17 @@ func truncateEndpointTargetSubset(ep *endpoint.Endpoint) []string {
 		return targets
 	}
 
-	log.Warnf("Truncating and sorting %d (of %d) endpoint targets for endpoint %s, which is in excess of Route53 limits of ResourceRecord per ResourceRecordSet", maxResourceRecordsPerResourceRecordSet, len(ep.Targets), ep.DNSName)
+	resourceRecordsOverLimitForRecordSet.WithLabelValues(identifier.name, identifier.recordType, identifier.setIdentifier).Set(1)
+	gaugeSetPerResourceRecordLabel[identifier] = struct{}{}
+
+	log.Errorf(
+		"Truncating and sorting %d (of %d) endpoint targets for endpoint %q. Resource is of type %q with setIdentifier %q",
+		maxResourceRecordsPerResourceRecordSet,
+		len(ep.Targets),
+		ep.DNSName,
+		ep.RecordType,
+		ep.SetIdentifier,
+	)
 	hashedTargets := map[string]string{}
 	var hashedTargetKeys []string
 	// hash, then sort targets, so we have a stable yet random subset of IPs
