@@ -336,8 +336,6 @@ func TestAzureApplyChanges(t *testing.T) {
 	testAzureApplyChangesInternal(t, false, &recordsClient)
 
 	validateAzureEndpoints(t, recordsClient.deletedEndpoints, []*endpoint.Endpoint{
-		endpoint.NewEndpoint("old.example.com", endpoint.RecordTypeA, ""),
-		endpoint.NewEndpoint("oldcname.example.com", endpoint.RecordTypeCNAME, ""),
 		endpoint.NewEndpoint("deleted.example.com", endpoint.RecordTypeA, ""),
 		endpoint.NewEndpoint("deletedcname.example.com", endpoint.RecordTypeCNAME, ""),
 	})
@@ -488,8 +486,6 @@ func TestAzureApplyChangesZoneName(t *testing.T) {
 	testAzureApplyChangesInternalZoneName(t, false, &recordsClient)
 
 	validateAzureEndpoints(t, recordsClient.deletedEndpoints, []*endpoint.Endpoint{
-		endpoint.NewEndpoint("old.foo.example.com", endpoint.RecordTypeA, ""),
-		endpoint.NewEndpoint("oldcname.foo.example.com", endpoint.RecordTypeCNAME, ""),
 		endpoint.NewEndpoint("deleted.foo.example.com", endpoint.RecordTypeA, ""),
 		endpoint.NewEndpoint("deletedcname.foo.example.com", endpoint.RecordTypeCNAME, ""),
 	})

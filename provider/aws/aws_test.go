@@ -63,7 +63,7 @@ type Route53APIStub struct {
 // MockMethod starts a description of an expectation of the specified method
 // being called.
 //
-//     Route53APIStub.MockMethod("MyMethod", arg1, arg2)
+//	Route53APIStub.MockMethod("MyMethod", arg1, arg2)
 func (r *Route53APIStub) MockMethod(method string, args ...interface{}) *mock.Call {
 	return r.m.On(method, args...)
 }
@@ -791,7 +791,7 @@ func TestAWSsubmitChangesTooManyEndpointTargets(t *testing.T) {
 	ep := endpoint.NewEndpointWithTTL(hostname, endpoint.RecordTypeA, endpoint.TTL(recordTTL), targets...)
 	endpoints = append(endpoints, ep)
 
-	expectedTargets = truncateEndpointTargetSubset(ep)
+	expectedTargets = truncateEndpointTargetSubset(ep, provider.maxResourceRecordsPerResourceRecordSet)
 	fmt.Printf("Expecting endpoint with %d targets: %v\n", len(expectedTargets), expectedTargets)
 	expectedEp := endpoint.NewEndpointWithTTL(hostname, endpoint.RecordTypeA, endpoint.TTL(recordTTL), expectedTargets...)
 	expectedEndpoints = append(expectedEndpoints, expectedEp)
@@ -1447,16 +1447,17 @@ func newAWSProviderWithTagFilter(t *testing.T, domainFilter endpoint.DomainFilte
 	client := NewRoute53APIStub(t)
 
 	provider := &AWSProvider{
-		client:               client,
-		batchChangeSize:      defaultBatchChangeSize,
-		batchChangeInterval:  defaultBatchChangeInterval,
-		evaluateTargetHealth: evaluateTargetHealth,
-		domainFilter:         domainFilter,
-		zoneIDFilter:         zoneIDFilter,
-		zoneTypeFilter:       zoneTypeFilter,
-		zoneTagFilter:        zoneTagFilter,
-		dryRun:               false,
-		zonesCache:           &zonesListCache{duration: 1 * time.Minute},
+		client:                                 client,
+		batchChangeSize:                        defaultBatchChangeSize,
+		batchChangeInterval:                    defaultBatchChangeInterval,
+		evaluateTargetHealth:                   evaluateTargetHealth,
+		domainFilter:                           domainFilter,
+		zoneIDFilter:                           zoneIDFilter,
+		zoneTypeFilter:                         zoneTypeFilter,
+		zoneTagFilter:                          zoneTagFilter,
+		maxResourceRecordsPerResourceRecordSet: 400,
+		dryRun:                                 false,
+		zonesCache:                             &zonesListCache{duration: 1 * time.Minute},
 	}
 
 	createAWSZone(t, provider, &route53.HostedZone{

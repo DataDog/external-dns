@@ -329,8 +329,6 @@ func TestAzurePrivateDNSApplyChanges(t *testing.T) {
 	testAzurePrivateDNSApplyChangesInternal(t, false, &recordsClient)
 
 	validateAzureEndpoints(t, recordsClient.deletedEndpoints, []*endpoint.Endpoint{
-		endpoint.NewEndpoint("old.example.com", endpoint.RecordTypeA, ""),
-		endpoint.NewEndpoint("oldcname.example.com", endpoint.RecordTypeCNAME, ""),
 		endpoint.NewEndpoint("deleted.example.com", endpoint.RecordTypeA, ""),
 		endpoint.NewEndpoint("deletedcname.example.com", endpoint.RecordTypeCNAME, ""),
 	})
