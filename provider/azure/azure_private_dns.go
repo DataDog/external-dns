@@ -236,10 +236,6 @@ func (p *AzurePrivateDNSProvider) mapChanges(zones []privatedns.PrivateZone, cha
 		mapChange(deleted, change)
 	}
 
-	for _, change := range changes.UpdateOld {
-		mapChange(deleted, change)
-	}
-
 	for _, change := range changes.Create {
 		mapChange(updated, change)
 	}

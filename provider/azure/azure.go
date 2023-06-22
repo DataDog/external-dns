@@ -240,10 +240,6 @@ func (p *AzureProvider) mapChanges(zones []dns.Zone, changes *plan.Changes) (azu
 		mapChange(deleted, change)
 	}
 
-	for _, change := range changes.UpdateOld {
-		mapChange(deleted, change)
-	}
-
 	for _, change := range changes.Create {
 		mapChange(updated, change)
 	}
